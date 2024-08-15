@@ -29,6 +29,12 @@ func main() {
 
 	partOne(file)
 
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return
+	}
+
+	partTwo(file)
 }
 
 func partOne(file *os.File) {
@@ -42,7 +48,19 @@ func partOne(file *os.File) {
 		}
 	}
 
-	fmt.Printf("Total: %d\n", total)
+	fmt.Printf("Total Part One: %d\n", total)
+}
+
+func partTwo(file *os.File) {
+	var total = 0
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		game := resolveGame(scanner.Text())
+		total += game.red * game.blue * game.green
+	}
+
+	fmt.Printf("Total Part Two: %d\n", total)
 }
 
 func resolveGame(line string) game {
