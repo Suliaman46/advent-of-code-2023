@@ -14,4 +14,12 @@ func main() {
 	defer file.Close()
 
 	partOne(file)
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return
+	}
+
+	partTwo(file)
+
 }
