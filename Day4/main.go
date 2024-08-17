@@ -138,14 +138,14 @@ func resolveTwoDigitNumber(line []byte, idx int) int {
 }
 
 func partTwo(file *os.File) {
-	cardTally := map[int]int{}
+	var cardTally []int
 
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 		card := parseCard(scanner.Bytes())
 		intersection := intersectNumbers(card)
-		addToTally(cardTally, card.id, len(intersection))
+		addToTally(&cardTally, card.id, len(intersection))
 	}
 
 	total := 0
@@ -157,10 +157,10 @@ func partTwo(file *os.File) {
 
 }
 
-func addToTally(cardTally map[int]int, cardId int, intersectionLength int) {
-	cur, exists := cardTally[cardId]
+func addToTally(cardTally *[]int, cardId int, intersectionLength int) {
+	exists := cardId <= len(*cardTally)
 	if exists {
-		handleCardCopies(cardTally, cardId, intersectionLength, cur)
+		handleCardCopies(cardTally, cardId, intersectionLength, (*cardTally)[cardId-1])
 	}
 
 	for i := cardId; i <= cardId+intersectionLength; i++ {
@@ -168,7 +168,7 @@ func addToTally(cardTally map[int]int, cardId int, intersectionLength int) {
 	}
 }
 
-func handleCardCopies(cardTally map[int]int, cardId int, intersectionLength int, cur int) {
+func handleCardCopies(cardTally *[]int, cardId int, intersectionLength int, cur int) {
 	for j := 0; j < cur; j++ {
 		for i := cardId + 1; i <= cardId+intersectionLength; i++ {
 			addOrUpdateCardCount(cardTally, i)
@@ -176,11 +176,11 @@ func handleCardCopies(cardTally map[int]int, cardId int, intersectionLength int,
 	}
 }
 
-func addOrUpdateCardCount(cardTally map[int]int, cardId int) {
-	cur, exists := cardTally[cardId]
+func addOrUpdateCardCount(cardTally *[]int, cardId int) {
+	exists := cardId <= len(*cardTally)
 	if exists {
-		cardTally[cardId] = cur + 1
+		(*cardTally)[cardId-1] = (*cardTally)[cardId-1] + 1
 		return
 	}
-	cardTally[cardId] = 1
+	*cardTally = append(*cardTally, 1)
 }
