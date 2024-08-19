@@ -10,3 +10,7 @@ func SeekToFileStart(file *os.File) {
 		return
 	}
 }
+
+func IsDigit(char byte) bool {
+	return char >= 48 && char <= 57
+}
