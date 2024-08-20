@@ -29,7 +29,6 @@ type Hand struct {
 	hand      string
 	bet       int
 	cardCount []CardCount
-	score     int
 }
 
 type CardCount struct {
@@ -50,43 +49,30 @@ func main() {
 
 func partOne(file *os.File) {
 	hands := parseHands(file)
-
-	for i := 0; i < len(hands); i++ {
-		score := resolvePrimaryType(hands[i])
-		hands[i].score = score
-	}
-
-	var handByTypes [][]Hand
-
-	for i := 1; i <= 7; i++ {
-		temp := make([]Hand, 0)
-		appendToAppSlice(hands, &temp, i)
-		handByTypes = append(handByTypes, temp)
-	}
-
-	for i := 0; i < len(handByTypes); i++ {
-		if len(handByTypes[i]) > 1 {
-			performSecondarySort(&handByTypes[i])
-		}
-	}
+	sort.Slice(hands, func(i, j int) bool {
+		return sortHand(&hands, i, j)
+	})
 
 	total := 0
 	rank := 1
-	for i := 0; i < len(handByTypes); i++ {
-		for j := 0; j < len(handByTypes[i]); j++ {
-			total += handByTypes[i][j].bet * rank
-			rank++
-		}
+	for i := 0; i < len(hands); i++ {
+		total += hands[i].bet * rank
+		rank++
 	}
 
 	fmt.Println("Total Part One:", total)
 
 }
 
-func performSecondarySort(hands *[]Hand) {
-	sort.Slice(*hands, func(i, j int) bool {
+func sortHand(hands *[]Hand, i int, j int) bool {
+	iType := resolvePrimaryType((*hands)[i])
+	jType := resolvePrimaryType((*hands)[j])
+
+	if iType == jType {
 		return sortCardByStrength(hands, 0, i, j)
-	})
+	}
+
+	return iType < jType
 }
 
 func sortCardByStrength(hands *[]Hand, cardIdx int, i int, j int) bool {
@@ -97,14 +83,6 @@ func sortCardByStrength(hands *[]Hand, cardIdx int, i int, j int) bool {
 		return sortCardByStrength(hands, cardIdx+1, i, j)
 	} else {
 		return iStr < jStr
-	}
-}
-
-func appendToAppSlice(hands []Hand, arr *[]Hand, score int) {
-	for i := 0; i < len(hands); i++ {
-		if (hands)[i].score == score {
-			*arr = append(*arr, (hands)[i])
-		}
 	}
 }
 
@@ -193,7 +171,7 @@ func parseHands(file *os.File) []Hand {
 
 		charCounts := resolveUniqueCharCount(hand)
 
-		hands = append(hands, Hand{hand, bet, charCounts, 0})
+		hands = append(hands, Hand{hand, bet, charCounts})
 	}
 	return hands
 }
