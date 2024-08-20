@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aoc23/utils"
 	"bufio"
 	"fmt"
 	"os"
@@ -13,7 +14,7 @@ var cardStrength = map[string]int{
 	"A": 14,
 	"K": 13,
 	"Q": 12,
-	"J": 11,
+	"J": 1, // Needs to be changed to 11 for Part 1
 	"T": 10,
 	"9": 9,
 	"8": 8,
@@ -45,6 +46,10 @@ func main() {
 	defer file.Close()
 
 	partOne(file)
+
+	utils.SeekToFileStart(file)
+
+	partTwo(file)
 }
 
 func partOne(file *os.File) {
@@ -64,69 +69,129 @@ func partOne(file *os.File) {
 
 }
 
+func partTwo(file *os.File) {
+	hands := parseHands(file)
+
+	var updatedHands []*Hand
+	newHandToOldHand := make(map[*Hand]*Hand, len(hands))
+	for i := 0; i < len(hands); i++ {
+		if strings.Contains(hands[i].hand, "J") {
+			jCount := 0
+			for _, cardCount := range hands[i].cardCount {
+				if cardCount.card == "J" {
+					jCount = cardCount.count
+				}
+			}
+			newHand := resolveBestJokerReplacement(&hands[i], jCount)
+			updatedHands = append(updatedHands, newHand)
+			newHandToOldHand[newHand] = &hands[i]
+		} else {
+			updatedHands = append(updatedHands, &Hand{hands[i].hand, hands[i].bet, hands[i].cardCount})
+		}
+	}
+
+	sort.Slice(updatedHands, func(i, j int) bool {
+		return sortHandPartTwo(&updatedHands, newHandToOldHand, i, j)
+	})
+
+	total := 0
+	rank := 1
+	for i := 0; i < len(updatedHands); i++ {
+		total += updatedHands[i].bet * rank
+		rank++
+	}
+
+	fmt.Println("Total Part Two:", total)
+}
+
 func sortHand(hands *[]Hand, i int, j int) bool {
-	iType := resolvePrimaryType((*hands)[i])
-	jType := resolvePrimaryType((*hands)[j])
+	iType := resolvePrimaryType((*hands)[i].cardCount)
+	jType := resolvePrimaryType((*hands)[j].cardCount)
 
 	if iType == jType {
-		return sortCardByStrength(hands, 0, i, j)
+		return sortCardByStrength((*hands)[i].hand, (*hands)[j].hand, 0)
 	}
 
 	return iType < jType
 }
 
-func sortCardByStrength(hands *[]Hand, cardIdx int, i int, j int) bool {
-	iStr := cardStrength[string((*hands)[i].hand[cardIdx])]
-	jStr := cardStrength[string((*hands)[j].hand[cardIdx])]
+func sortHandPartTwo(hands *[]*Hand, newHandToOldHand map[*Hand]*Hand, i int, j int) bool {
+	iType := resolvePrimaryType((*hands)[i].cardCount)
+	jType := resolvePrimaryType((*hands)[j].cardCount)
 
-	if jStr == iStr && cardIdx+1 < len(*hands) {
-		return sortCardByStrength(hands, cardIdx+1, i, j)
+	if iType == jType {
+		first := (*hands)[i].hand
+		second := (*hands)[j].hand
+
+		oldFirst, oldFirstExists := newHandToOldHand[(*hands)[i]]
+		oldSecond, oldSecondExists := newHandToOldHand[(*hands)[j]]
+
+		if oldFirstExists {
+			first = oldFirst.hand
+		}
+		if oldSecondExists {
+			second = oldSecond.hand
+		}
+		return sortCardByStrength(
+			first, second,
+			0)
+	}
+
+	return iType < jType
+}
+
+func sortCardByStrength(handOne string, handTwo string, cardIdx int) bool {
+	iStr := cardStrength[string(handOne[cardIdx])]
+	jStr := cardStrength[string(handTwo[cardIdx])]
+
+	if jStr == iStr && cardIdx+1 < len(handOne) {
+		return sortCardByStrength(handOne, handTwo, cardIdx+1)
 	} else {
 		return iStr < jStr
 	}
 }
 
-func resolvePrimaryType(hand Hand) int {
+func resolvePrimaryType(cardCount []CardCount) int {
 	switch {
-	case isFiveOfaKind(hand):
+	case isFiveOfaKind(cardCount):
 		return 7
-	case isFourOfaKind(hand):
+	case isFourOfaKind(cardCount):
 		return 6
-	case isFullHouse(hand):
+	case isFullHouse(cardCount):
 		return 5
-	case isThreeOfaKind(hand):
+	case isThreeOfaKind(cardCount):
 		return 4
-	case isTwoPair(hand):
+	case isTwoPair(cardCount):
 		return 3
-	case isOnePair(hand):
+	case isOnePair(cardCount):
 		return 2
 	default:
 		return 1
 	}
 }
 
-func isFiveOfaKind(hand Hand) bool {
-	return len(hand.cardCount) == 1
+func isFiveOfaKind(cardCount []CardCount) bool {
+	return len(cardCount) == 1
 }
 
-func isFourOfaKind(hand Hand) bool {
-	return len(hand.cardCount) == 2 && hand.cardCount[0].count == 4
+func isFourOfaKind(cardCount []CardCount) bool {
+	return len(cardCount) == 2 && cardCount[0].count == 4
 }
 
-func isFullHouse(hand Hand) bool {
-	return len(hand.cardCount) == 2 && hand.cardCount[0].count == 3
+func isFullHouse(cardCount []CardCount) bool {
+	return len(cardCount) == 2 && cardCount[0].count == 3
 }
 
-func isThreeOfaKind(hand Hand) bool {
-	return len(hand.cardCount) == 3 && hand.cardCount[0].count == 3
+func isThreeOfaKind(cardCount []CardCount) bool {
+	return len(cardCount) == 3 && cardCount[0].count == 3
 }
 
-func isTwoPair(hand Hand) bool {
-	return len(hand.cardCount) == 3 && hand.cardCount[0].count == 2
+func isTwoPair(cardCount []CardCount) bool {
+	return len(cardCount) == 3 && cardCount[0].count == 2
 }
 
-func isOnePair(hand Hand) bool {
-	return len(hand.cardCount) == 4 && hand.cardCount[0].count == 2
+func isOnePair(cardCount []CardCount) bool {
+	return len(cardCount) == 4 && cardCount[0].count == 2
 }
 
 func resolveUniqueCharCount(hand string) []CardCount {
@@ -140,8 +205,6 @@ func resolveUniqueCharCount(hand string) []CardCount {
 
 		unsorted[string(char)] = 1
 	}
-
-	//fmt.Println("Map", unsorted)
 
 	keys := make([]string, 0, len(unsorted))
 	for key := range unsorted {
@@ -174,4 +237,31 @@ func parseHands(file *os.File) []Hand {
 		hands = append(hands, Hand{hand, bet, charCounts})
 	}
 	return hands
+}
+
+func resolveBestJokerReplacement(hand *Hand, jokerOccur int) *Hand {
+	maxCount := 0
+	var maxString string
+	var maxCardCount []CardCount
+	for i := 0; i < jokerOccur; i++ {
+		for card, _ := range cardStrength {
+			tempString := strings.Replace(hand.hand, "J", card, i+1)
+			cardCount := resolveUniqueCharCount(tempString)
+			val := resolvePrimaryType(cardCount)
+			if val == maxCount {
+				if sortCardByStrength(maxString, tempString, 0) {
+					maxCount = val
+					maxString = tempString
+					maxCardCount = cardCount
+				}
+			}
+			if val > maxCount {
+				maxCount = val
+				maxString = tempString
+				maxCardCount = cardCount
+			}
+		}
+	}
+
+	return &Hand{maxString, hand.bet, maxCardCount}
 }
