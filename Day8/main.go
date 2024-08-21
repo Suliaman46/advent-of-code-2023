@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aoc23/utils"
 	"bufio"
 	"fmt"
 	"os"
@@ -18,8 +19,15 @@ type DesertMap struct {
 	startingNode *Node
 }
 
+type DesertMapPartTwo struct {
+	instructions  []string
+	startingNodes []*Node
+}
+
 const StartPosition = "AAA"
+const StartSuffix = "A"
 const EndPosition = "ZZZ"
+const EndSuffix = "Z"
 const LeftStep = "L"
 const RightStep = "R"
 
@@ -32,19 +40,36 @@ func main() {
 	defer file.Close()
 
 	partOne(file)
+
+	utils.SeekToFileStart(file)
+
+	partTwo(file)
 }
 
 func partOne(file *os.File) {
-	desertMap := parseTree(file)
-	steps := walkMap(desertMap)
-	fmt.Println("Total Steps Part One: ", steps)
+	desertMap := parseTree(file, func(pos string) bool {
+		return pos == StartPosition
+	})
+	steps := resolveStepsToEnd(desertMap, func(pos string) bool {
+		return pos == EndPosition
+	})
+	fmt.Println("Total Steps Part One: ", steps[0])
 }
 
-func parseTree(file *os.File) DesertMap {
-	var head *Node
+func partTwo(file *os.File) {
+	desertMap := parseTree(file, func(pos string) bool {
+		return strings.HasSuffix(pos, StartSuffix)
+	})
+	steps := resolveStepsToEnd(desertMap, func(pos string) bool {
+		return strings.HasSuffix(pos, EndSuffix)
+	})
+	results := resolveCommonStep(steps)
+	fmt.Println("Total Steps Part Two:", results)
+}
 
+func parseTree(file *os.File, startIdentifier func(pos string) bool) DesertMapPartTwo {
 	var seenNodes = make(map[string]*Node)
-
+	var startingPoints []*Node
 	scanner := bufio.NewScanner(file)
 	idx := 0
 	var instructions []string
@@ -79,13 +104,13 @@ func parseTree(file *os.File) DesertMap {
 
 			seenNodes[pos] = &curr
 
-			if pos == StartPosition {
-				head = &curr
+			if startIdentifier(pos) {
+				startingPoints = append(startingPoints, &curr)
 			}
 		}
 	}
 
-	return DesertMap{instructions, head}
+	return DesertMapPartTwo{instructions, startingPoints}
 }
 
 func handleSeenNode(node *Node, posLeft string, posRight string, seenNodes *map[string]*Node) {
@@ -143,18 +168,33 @@ func handleRightChild(node *Node, posRight string, seenNodes *map[string]*Node) 
 	(*seenNodes)[posRight] = &newChild
 }
 
-func walkMap(desertMap DesertMap) int {
+func resolveStepsToEnd(desertMap DesertMapPartTwo, endIdentifier func(pos string) bool) []int {
+	startingNodes := desertMap.startingNodes
+	steps := 0
+
+	stepsTaken := make([]int, len(startingNodes))
+	for i := 0; i < len(startingNodes); i++ {
+		startingNode := startingNodes[i]
+		steps = walkMap(DesertMap{desertMap.instructions, startingNode}, endIdentifier)
+
+		stepsTaken[i] = steps
+	}
+
+	return stepsTaken
+}
+
+func walkMap(desertMap DesertMap, endIdentifier func(pos string) bool) int {
 	var curr *Node
 	curr = desertMap.startingNode
 	steps := 0
 	for i := 0; i < len(desertMap.instructions); i++ {
 		instruction := desertMap.instructions[i]
 
-		if curr.pos == EndPosition {
+		if endIdentifier(curr.pos) {
 			return steps
 		}
 
-		// Reached end of instructions but not ZZZ so restart
+		// Reached end of instructions but not END node so restart
 		if i == len(desertMap.instructions)-1 {
 			i = -1
 		}
@@ -170,4 +210,27 @@ func walkMap(desertMap DesertMap) int {
 	}
 
 	return steps
+}
+
+func resolveCommonStep(steps []int) int {
+	result := steps[0]
+	for i := 1; i < len(steps); i++ {
+		result = LCM(result, steps[i])
+	}
+
+	return result
+}
+
+func LCM(a, b int) int {
+	result := a * b / GCD(a, b)
+
+	return result
+}
+func GCD(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
+	}
+	return a
 }
