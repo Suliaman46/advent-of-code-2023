@@ -9,6 +9,13 @@ import (
 	"strings"
 )
 
+type ExtrapolationDir int
+
+const (
+	Forward ExtrapolationDir = iota
+	Backward
+)
+
 func main() {
 	file, err := os.Open("./input.txt")
 	if err != nil {
@@ -49,7 +56,7 @@ func partOne(file *os.File) {
 func extrapolateNextVal(sequence []int) int {
 	var res []int
 
-	extrapolateSeq(sequence, &res)
+	extrapolateNextSeq(sequence, &res, Forward)
 	var total = 0
 	for _, num := range res {
 		total += num
@@ -61,7 +68,7 @@ func extrapolateNextVal(sequence []int) int {
 func extrapolatePrevVal(sequence []int) int {
 	var res []int
 
-	extrapolateSeqBackwards(sequence, &res)
+	extrapolateNextSeq(sequence, &res, Backward)
 	var curr = 0
 
 	for i := len(res) - 1; i >= 0; i-- {
@@ -72,7 +79,7 @@ func extrapolatePrevVal(sequence []int) int {
 	return sequence[0] - curr
 }
 
-func extrapolateSeq(sequence []int, res *[]int) *[]int {
+func extrapolateNextSeq(sequence []int, res *[]int, extrapolationDir ExtrapolationDir) *[]int {
 	var temp []int
 	var diff int
 	var anyNonZeroNum = false
@@ -84,36 +91,17 @@ func extrapolateSeq(sequence []int, res *[]int) *[]int {
 		temp = append(temp, diff)
 	}
 
-	*res = append(*res, diff)
+	if extrapolationDir == Forward {
+		*res = append(*res, temp[len(temp)-1])
+	} else {
+		*res = append(*res, temp[0])
+	}
 
 	if !anyNonZeroNum {
 		return res
 	}
 
-	return extrapolateSeq(temp, res)
-
-}
-
-func extrapolateSeqBackwards(sequence []int, res *[]int) *[]int {
-	var temp []int
-	var diff int
-	var anyNonZeroNum = false
-	for i := 1; i < len(sequence); i++ {
-		diff = sequence[i] - sequence[i-1]
-		if diff != 0 {
-			anyNonZeroNum = true
-		}
-		temp = append(temp, diff)
-	}
-
-	*res = append(*res, temp[0])
-
-	if !anyNonZeroNum {
-		return res
-	}
-
-	return extrapolateSeqBackwards(temp, res)
-
+	return extrapolateNextSeq(temp, res, extrapolationDir)
 }
 
 func parseSequences(file *os.File) [][]int {
