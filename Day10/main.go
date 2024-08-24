@@ -21,6 +21,7 @@ func main() {
 
 	utils.SeekToFileStart(file)
 
+	partTwo(file)
 }
 
 type Coordinate struct {
